@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"bytes"
+	"strings"
+	"os/exec"
 )
 import flag "github.com/spf13/pflag"
 
@@ -16,6 +19,7 @@ func main(){
 	var destination = flag.StringP("dest","d","","destination of output")	
 	flag.Parse()
 //debug
+/*
 	fmt.Printf("args=%s, num=%d\n", flag.Args(), flag.NArg())
 	for i := 0; i != flag.NArg(); i++ {
 		fmt.Printf("arg[%d]=%s\n", i, flag.Arg(i))
@@ -24,7 +28,7 @@ func main(){
 	fmt.Println("endPage=",*endPage)
 	fmt.Println("line=",*lineNumber)
 	fmt.Println("format=",*format)
-	fmt.Println("desination=",*destination)
+	fmt.Println("desination=",*destination)*/
 //legal check
 	//-s and -e must use
 	//-l and -f can't be use at the same time
@@ -56,74 +60,173 @@ func main(){
 		os.Exit(1)
 	}
 	//拿到了一个[]byte型的数据data
-	fmt.Printf("data receive:\n %s",string(data))
-	//暂时没有做文件存储
-	//行数固定为72行
-	if *format == false {
-		lineCount := 0
-		pageCount := 1
-		pointer := 0
-		standard := "\n"
-		for pointer < len(data) {
-			//找到换行符
-			for data[pointer] != standard[0] && pointer < len(data) {
-				pointer++
-				if pointer == len(data){//at the end
-					lineCount++ //行数增加
-					if lineCount > *lineNumber {
-						lineCount = 1
-						pageCount++
+	//fmt.Printf("data receive:\n %s",string(data))
+//没有-d参数
+	if *destination == "" {
+			//行数固定为72行
+		if *format == false {
+			lineCount := 0
+			pageCount := 1
+			pointer := 0
+			standard := "\n"
+			for pointer < len(data) {
+				//找到换行符
+				for data[pointer] != standard[0] && pointer < len(data) {
+					pointer++
+					if pointer == len(data){//at the end
+						lineCount++ //行数增加
+						if lineCount > *lineNumber {
+							lineCount = 1
+							pageCount++
+						}
+						if pageCount >= *startPage && pageCount <= *endPage {
+							fmt.Printf("%s",string(data[:]))
+						}
+						break
 					}
-					if pageCount >= *startPage && pageCount <= *endPage {
-						fmt.Printf("%s",string(data[:]))
-					}
-					break
 				}
-			}
-			fmt.Println(lineCount,pageCount,string(data[:pointer+1]))
-
-
-			pointer++ //跳过换行符
-			lineCount++ //行数增加
-			if lineCount > *lineNumber {
-				lineCount = 1
-				pageCount++
-			}
-
-			
-			if pageCount >= *startPage && pageCount <= *endPage {
-				fmt.Printf("%s",string(data[:pointer]))
-			}
-			data = data[pointer:]
-			pointer = 0
-		}
-	} else{
-		pageCount := 0
-		pointer := 0
-		standard := "\f"
-		for pointer<len(data) {
-			for data[pointer]!=standard[0] {
-				pointer++
-				if pointer == len(data){
+				//fmt.Println(lineCount,pageCount,string(data[:pointer+1]))
+	
+	
+				pointer++ //跳过换行符
+				lineCount++ //行数增加
+				if lineCount > *lineNumber {
+					lineCount = 1
 					pageCount++
-					if pageCount >= *startPage && pageCount <= *endPage {
-						fmt.Println(string(data[:]))
-					}
-					break;
 				}
+	
+				
+				if pageCount >= *startPage && pageCount <= *endPage {
+					fmt.Printf("%s",string(data[:pointer]))
+				}
+				data = data[pointer:]
+				pointer = 0
 			}
-
-			
-
-			pointer++
-			pageCount++
-
-			if pageCount >= *startPage && pageCount <= *endPage {
-				fmt.Printf("%s",string(data[:pointer]))
+		} else{
+			pageCount := 0
+			pointer := 0
+			standard := "\f"
+			for pointer<len(data) {
+				for data[pointer]!=standard[0] {
+					pointer++
+					if pointer == len(data){
+						pageCount++
+						if pageCount >= *startPage && pageCount <= *endPage {
+							fmt.Printf("%s",string(data[:]))
+						}
+						break;
+					}
+				}
+	
+				
+	
+				pointer++
+				pageCount++
+	
+				if pageCount >= *startPage && pageCount <= *endPage {
+					fmt.Printf("%s",string(data[:pointer]))
+				}
+				data = data[pointer:]
+				pointer = 0
 			}
-			data = data[pointer:]
-			pointer = 0
 		}
+	
+	}else{
+		//如何实现-d参数：
+		//使用exec包的Command命令，将lp命令的参数作为参数传入，同时合成-dxxx参数
+		var b []byte
+		b = make([]byte,0)
+
+		var conn [][]byte
+		conn = make([][]byte,2)
+		
+		sep := []byte("")
+
+		if *format == false {
+			lineCount := 0
+			pageCount := 1
+			pointer := 0
+			standard := "\n"
+			for pointer < len(data) {
+				//找到换行符
+				for data[pointer] != standard[0] && pointer < len(data) {
+					pointer++
+					if pointer == len(data){//at the end
+						lineCount++ //行数增加
+						if lineCount > *lineNumber {
+							lineCount = 1
+							pageCount++
+						}
+						if pageCount >= *startPage && pageCount <= *endPage {
+							//fmt.Printf("%s",string(data[:]))
+							conn[0] = b
+							conn[1] = data[:]
+							b = bytes.Join(conn,sep)
+						}
+						break
+					}
+				}	
+	
+				pointer++ //跳过换行符
+				lineCount++ //行数增加
+				if lineCount > *lineNumber {
+					lineCount = 1
+					pageCount++
+				}
+	
+				
+				if pageCount >= *startPage && pageCount <= *endPage {
+					//fmt.Printf("%s",string(data[:pointer]))
+					conn[0] = b
+					conn[1] = data[:pointer]
+					b = bytes.Join(conn,sep)
+				}
+				data = data[pointer:]
+				pointer = 0
+			}
+		} else{
+			pageCount := 0
+			pointer := 0
+			standard := "\f"
+			for pointer<len(data) {
+				for data[pointer]!=standard[0] {
+					pointer++
+					if pointer == len(data){
+						pageCount++
+						if pageCount >= *startPage && pageCount <= *endPage {
+							//fmt.Printf("%s",string(data[:]))
+							conn[0] = b
+							conn[1] = data[:]
+							b = bytes.Join(conn,sep)
+						}
+						break;
+					}
+				}
+	
+				
+	
+				pointer++
+				pageCount++
+	
+				if pageCount >= *startPage && pageCount <= *endPage {
+					//fmt.Printf("%s",string(data[:pointer]))
+					conn[0] = b
+					conn[1] = data[:pointer]
+					b = bytes.Join(conn,sep)
+				}
+				data = data[pointer:]
+				pointer = 0
+			}
+		}
+		orders := []string{"-d",*destination}
+
+		cmd := exec.Command("lp",strings.Join(orders,""))
+		cmd.Stdin = strings.NewReader(string(b))
+		if err := cmd.Run(); err != nil {
+			fmt.Println("Error: ", err)
+			os.Exit(1)
+		}  
+
 	}
 
 }
