@@ -25,6 +25,16 @@ func main(){
 	fmt.Println("line=",*lineNumber)
 	fmt.Println("format=",*format)
 	fmt.Println("desination=",*destination)
+//legal check
+	//-s and -e must use
+	//-l and -f can't be use at the same time
+	if *startPage==-1 || *endPage == -1{
+		fmt.Println("Please enter start page and end page")
+		os.Exit(1)
+	} else if *format == true && *lineNumber !=72{
+		fmt.Println("-l and -f can't be used at the same time")
+		os.Exit(1)
+	}
 
 	var data []byte
 	var err error
@@ -45,10 +55,73 @@ func main(){
 		fmt.Printf("Input must have one argument as file name or no argument.")
 		os.Exit(1)
 	}
-	fmt.Printf("data is:%s",string(data))
-//legal check
-	//-s and -e must use
+	//拿到了一个[]byte型的数据data
 
-	//-l and -f can't be use at the same time
+	//暂时没有做文件存储
+	//行数固定为72行
+	if *format == false {
+		lineCount := 0
+		pageCount := 1
+		pointer := 0
+		standard := "\n"
+		for pointer < len(data) {
+			//找到换行符
+			for data[pointer] != standard[0] && pointer < len(data) {
+				pointer++
+			}
+			fmt.Println(lineCount,pageCount,string(data[:pointer+1]))
+			if pointer == len(data){//at the end
+				lineCount++ //行数增加
+				if lineCount > *lineNumber {
+					lineCount = 1
+					pageCount++
+				}
+				if pageCount >= *startPage && pageCount <= *endPage {
+					fmt.Println(string(data[:]))
+				}
+				break
+			}
+
+			pointer++ //跳过换行符
+			lineCount++ //行数增加
+			if lineCount > *lineNumber {
+				lineCount = 1
+				pageCount++
+			}
+
+			
+			if pageCount >= *startPage && pageCount <= *endPage {
+				fmt.Println(string(data[:pointer]))
+			}
+			data = data[pointer:]
+			pointer = 0
+		}
+	} else{
+		pageCount := 0
+		pointer := 0
+		standard := "\f"
+		for pointer<len(data) {
+			for data[pointer]!=standard[0] && pointer < len(data){
+				pointer++
+			}
+
+			if pointer == len(data){
+				pageCount++
+				if pageCount >= *startPage && pageCount <= *endPage {
+					fmt.Println(string(data[:]))
+				}
+				break;
+			}
+
+			pointer++
+			pageCount++
+
+			if pageCount >= *startPage && pageCount <= *endPage {
+				fmt.Println(string(data[:pointer]))
+			}
+			data = data[pointer:]
+			pointer = 0
+		}
+	}
 
 }
