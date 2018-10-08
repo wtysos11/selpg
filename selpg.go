@@ -56,7 +56,7 @@ func main(){
 		os.Exit(1)
 	}
 	//拿到了一个[]byte型的数据data
-
+	fmt.Printf("data receive:\n %s",string(data))
 	//暂时没有做文件存储
 	//行数固定为72行
 	if *format == false {
@@ -68,19 +68,20 @@ func main(){
 			//找到换行符
 			for data[pointer] != standard[0] && pointer < len(data) {
 				pointer++
+				if pointer == len(data){//at the end
+					lineCount++ //行数增加
+					if lineCount > *lineNumber {
+						lineCount = 1
+						pageCount++
+					}
+					if pageCount >= *startPage && pageCount <= *endPage {
+						fmt.Printf("%s",string(data[:]))
+					}
+					break
+				}
 			}
 			fmt.Println(lineCount,pageCount,string(data[:pointer+1]))
-			if pointer == len(data){//at the end
-				lineCount++ //行数增加
-				if lineCount > *lineNumber {
-					lineCount = 1
-					pageCount++
-				}
-				if pageCount >= *startPage && pageCount <= *endPage {
-					fmt.Println(string(data[:]))
-				}
-				break
-			}
+
 
 			pointer++ //跳过换行符
 			lineCount++ //行数增加
@@ -91,7 +92,7 @@ func main(){
 
 			
 			if pageCount >= *startPage && pageCount <= *endPage {
-				fmt.Println(string(data[:pointer]))
+				fmt.Printf("%s",string(data[:pointer]))
 			}
 			data = data[pointer:]
 			pointer = 0
@@ -101,23 +102,24 @@ func main(){
 		pointer := 0
 		standard := "\f"
 		for pointer<len(data) {
-			for data[pointer]!=standard[0] && pointer < len(data){
+			for data[pointer]!=standard[0] {
 				pointer++
+				if pointer == len(data){
+					pageCount++
+					if pageCount >= *startPage && pageCount <= *endPage {
+						fmt.Println(string(data[:]))
+					}
+					break;
+				}
 			}
 
-			if pointer == len(data){
-				pageCount++
-				if pageCount >= *startPage && pageCount <= *endPage {
-					fmt.Println(string(data[:]))
-				}
-				break;
-			}
+			
 
 			pointer++
 			pageCount++
 
 			if pageCount >= *startPage && pageCount <= *endPage {
-				fmt.Println(string(data[:pointer]))
+				fmt.Printf("%s",string(data[:pointer]))
 			}
 			data = data[pointer:]
 			pointer = 0
